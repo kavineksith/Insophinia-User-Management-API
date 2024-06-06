@@ -225,7 +225,10 @@ This file is the main entry point of the Insophinia Management API. It sets up t
 - Once configured, it can be used to create an HTTPS server instance instead of the regular HTTP server.
 
 ## Conclusion
-
 The Insophinia Management API provides robust functionality for managing user profiles, roles, permissions, and API keys. It ensures security through JWT authentication and role-based authorization. 
 
+## **License**
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/kavineksith/Insophinia-User-Management-API/blob/main/LICENSE) file for details.
+
+### **Disclaimer:**
 Kindly note that this project is developed solely for educational purposes, not intended for industrial use, as its sole intention lies within the realm of education. We emphatically underscore that this endeavor is not sanctioned for industrial application. It is imperative to bear in mind that any utilization of this project for commercial endeavors falls outside the intended scope and responsibility of its creators. Thus, we explicitly disclaim any liability or accountability for such usage.
