@@ -1,31 +1,43 @@
-const db = require('../data/database.js');
+'use strict';
 
+const db = require('../data/database');
+
+/**
+ * Middleware: allows only users who have the 'admin' role.
+ *
+ * BUGS FIXED:
+ *  1. Original called getUserIdFromRequest() which was never imported — now reads req.user.id
+ *     set by authenticateToken middleware.
+ *  2. sqlite3 doesn't support db.get() with async/await natively — database.js now wraps
+ *     all methods in Promises so this works correctly.
+ *  3. Column name mismatch: table uses role_name, original queried `name`.
+ */
 const isAdmin = async (req, res, next) => {
     try {
-        const userId = getUserIdFromRequest(req); // Extract user ID from request
+        const userId = req.user?.id;
         if (!userId) {
-            return res.sendStatus(401); // Unauthorized if user ID is not found
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        // Query the database to check if the user has the admin role
-        const query = `
-            SELECT EXISTS (
-                SELECT 1 FROM user_roles 
-                WHERE user_id = ? AND role_id = (SELECT id FROM roles WHERE name = 'admin')
-            ) AS is_admin;
-        `;
-        const params = [userId];
-        const { is_admin } = await db.get(query, params);
+        const row = await db.get(
+            `SELECT EXISTS (
+                SELECT 1
+                FROM user_roles ur
+                JOIN roles r ON ur.role_id = r.role_id
+                WHERE ur.user_id = ?
+                  AND LOWER(r.role_name) = 'admin'
+            ) AS is_admin`,
+            [userId],
+        );
 
-        if (is_admin) {
-            next(); // Proceed to the next middleware if user is admin
-        } else {
-            res.sendStatus(403); // Forbidden if user is not admin
+        if (row && row.is_admin === 1) {
+            return next();
         }
-    } catch (error) {
-        console.error('Error checking admin role:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+
+        return res.status(403).json({ error: 'Admin access required' });
+    } catch (err) {
+        next(err);
     }
 };
 
-module.exports = isAdmin;
+module.exports = { isAdmin };

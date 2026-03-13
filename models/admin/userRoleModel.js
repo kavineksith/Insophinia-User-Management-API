@@ -1,58 +1,86 @@
-const db = require('../../data/database.js');
+'use strict';
+
+const db = require('../../data/database');
 
 const createUserRoles = async (userRoles) => {
-    try {
-        const insertQuery = `INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)`;
-        userRoles.forEach(async (userRole) => {
-            const { userId, roleId } = userRole;
-            await db.run(insertQuery, [userId, roleId]);
-        });
-    } catch (error) {
-        throw new Error('Error creating user roles:', error);
+    if (!Array.isArray(userRoles) || userRoles.length === 0) {
+        const err = new Error('userRoles must be a non-empty array');
+        err.status = 400;
+        throw err;
     }
+
+    await Promise.all(
+        userRoles.map(({ userId, roleId }) => {
+            if (!userId || !roleId) {
+                throw Object.assign(new Error('Each entry requires userId and roleId'), { status: 400 });
+            }
+            return db.run(
+                'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
+                [userId, roleId],
+            );
+        }),
+    );
 };
 
 const updateUserRoles = async (userRoles) => {
-    try {
-        const updateQuery = `UPDATE user_roles SET role_id = ? WHERE user_id = ?`;
-        userRoles.forEach(async (userRole) => {
-            const { userId, newRoleId } = userRole;
-            await db.run(updateQuery, [newRoleId, userId]);
-        });
-    } catch (error) {
-        throw new Error('Error updating user roles:', error);
+    if (!Array.isArray(userRoles) || userRoles.length === 0) {
+        const err = new Error('userRoles must be a non-empty array');
+        err.status = 400;
+        throw err;
     }
+
+    await Promise.all(
+        userRoles.map(({ userId, oldRoleId, newRoleId }) => {
+            if (!userId || !oldRoleId || !newRoleId) {
+                throw Object.assign(new Error('Each entry requires userId, oldRoleId, newRoleId'), { status: 400 });
+            }
+            return db.run(
+                'UPDATE user_roles SET role_id = ? WHERE user_id = ? AND role_id = ?',
+                [newRoleId, userId, oldRoleId],
+            );
+        }),
+    );
 };
 
 const deleteUserRoles = async (userRoles) => {
-    try {
-        const deleteQuery = `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`;
-        userRoles.forEach(async (userRole) => {
-            const { userId, roleId } = userRole;
-            await db.run(deleteQuery, [userId, roleId]);
-        });
-    } catch (error) {
-        throw new Error('Error deleting user roles:', error);
+    if (!Array.isArray(userRoles) || userRoles.length === 0) {
+        const err = new Error('userRoles must be a non-empty array');
+        err.status = 400;
+        throw err;
     }
+
+    await Promise.all(
+        userRoles.map(({ userId, roleId }) => {
+            if (!userId || !roleId) {
+                throw Object.assign(new Error('Each entry requires userId and roleId'), { status: 400 });
+            }
+            return db.run(
+                'DELETE FROM user_roles WHERE user_id = ? AND role_id = ?',
+                [userId, roleId],
+            );
+        }),
+    );
 };
 
 const readUserRoles = async () => {
-    try {
-        const query = `SELECT * FROM user_roles`;
-        return await db.all(query);
-    } catch (error) {
-        throw new Error('Error getting user roles:', error);
-    }
+    return db.all(`
+        SELECT ur.user_id, u.email, ur.role_id, r.role_name, ur.assigned_at
+        FROM user_roles ur
+        JOIN users u ON ur.user_id = u.user_id
+        JOIN roles r ON ur.role_id = r.role_id
+        ORDER BY u.email, r.role_name
+    `);
 };
 
 const readUserRole = async (userId, roleId) => {
-    try {
-        const query = `SELECT * FROM user_roles WHERE user_id = ? AND role_id = ?`;
-        const params = [userId, roleId];
-        return await db.all(query, params);
-    } catch (error) {
-        throw new Error('Error getting user role:', error);
-    }
+    return db.get(
+        `SELECT ur.user_id, u.email, ur.role_id, r.role_name, ur.assigned_at
+         FROM user_roles ur
+         JOIN users u ON ur.user_id = u.user_id
+         JOIN roles r ON ur.role_id = r.role_id
+         WHERE ur.user_id = ? AND ur.role_id = ?`,
+        [userId, roleId],
+    );
 };
 
 module.exports = {
@@ -60,5 +88,5 @@ module.exports = {
     updateUserRoles,
     deleteUserRoles,
     readUserRoles,
-    readUserRole
+    readUserRole,
 };
