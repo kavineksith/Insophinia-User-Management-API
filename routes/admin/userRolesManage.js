@@ -1,6 +1,13 @@
+'use strict';
+
 const express = require('express');
-const router = express.Router();
-const userRoleController = require('../../controllers/admin/userRoleController.js');
+const router  = express.Router();
+
+const { authenticateToken } = require('../../middleware/tokenManage');
+const { isAdmin }           = require('../../middleware/adminVerifer');
+const userRoleController    = require('../../controllers/admin/userRoleController');
+
+router.use(authenticateToken, isAdmin);
 
 router.route('/user-roles')
     .post(userRoleController.createUserRolesController)

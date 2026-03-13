@@ -1,14 +1,24 @@
+'use strict';
+
 const express = require('express');
-const router = express.Router();
-const userController = require('../../controllers/user/userController.js');
+const router  = express.Router();
+
+const { authenticateToken }           = require('../../middleware/tokenManage');
+const { isAdmin }                     = require('../../middleware/adminVerifer');
+const { requirePermissions }          = require('../../middleware/authorizationManage');
+const { apiLimiter }                  = require('../../middleware/requestLimiter');
+const userController                  = require('../../controllers/user/userController');
+
+// Every API key route requires authentication + per-IP rate limit
+router.use(authenticateToken, apiLimiter);
 
 router.route('/')
-    .post(userController.createApiSecretKeys)
-    .get(userController.readAllApiSecretKeys); //  route and method for Admin only to check all keys.
+    .post(requirePermissions(['create:apikey']), userController.createApiSecretKeys)
+    .get(isAdmin, userController.readAllApiSecretKeys);
 
 router.route('/:email')
-    .get(userController.readApiSecretKeys)
-    .put(userController.updateApiSecretKeys)
-    .delete(userController.deleteApiSecretKeys);
+    .get(userController.readApiSecretKeys)                                          // Self or admin — checked inside controller
+    .put(requirePermissions(['update:apikey']), userController.rotateApiSecretKeys)
+    .delete(requirePermissions(['delete:apikey']), userController.revokeApiSecretKeys);
 
 module.exports = router;
