@@ -15,6 +15,7 @@ const express        = require('express');
 const helmet         = require('helmet');
 const cors           = require('cors');
 const cookieParser   = require('cookie-parser');
+const csurf          = require('csurf');
 
 const corsOptions          = require('./middleware/corsOptions');
 const { requestLogger }    = require('./middleware/eventLogger');
@@ -53,6 +54,30 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));           // Prevent body-size attacks
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use(cookieParser());
+
+// ── CSRF protection for state-changing requests ────────────────────────────
+const csrfProtection = csurf({
+    cookie: false, // rely on existing cookie/session mechanisms if present
+});
+
+app.use((req, res, next) => {
+    // Only apply CSRF protection to methods that are supposed to be unsafe
+    const method = req.method.toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+        return next();
+    }
+
+    csrfProtection(req, res, (err) => {
+        if (err) {
+            return next(err);
+        }
+        // Expose token to downstream handlers if they want to send it to clients
+        if (typeof res.locals === 'object') {
+            res.locals.csrfToken = req.csrfToken();
+        }
+        next();
+    });
+});
 
 // ── Global rate limit & logging ─────────────────────────────────────────────
 app.use(globalLimiter);
