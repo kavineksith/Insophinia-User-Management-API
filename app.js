@@ -57,7 +57,12 @@ app.use(cookieParser());
 
 // ── CSRF protection for state-changing requests ────────────────────────────
 const csrfProtection = csurf({
-    cookie: false, // rely on existing cookie/session mechanisms if present
+    // Store CSRF secret in a cookie so it is tied to cookie-based auth
+    cookie: {
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+    },
 });
 
 app.use((req, res, next) => {
@@ -72,8 +77,11 @@ app.use((req, res, next) => {
             return next(err);
         }
         // Expose token to downstream handlers if they want to send it to clients
-        if (typeof res.locals === 'object') {
-            res.locals.csrfToken = req.csrfToken();
+        if (typeof res.locals === 'object' && typeof req.csrfToken === 'function') {
+            const token = req.csrfToken();
+            res.locals.csrfToken = token;
+            // Optionally expose via header for SPA clients
+            res.setHeader('X-CSRF-Token', token);
         }
         next();
     });
